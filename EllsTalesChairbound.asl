@@ -70,6 +70,7 @@ init
     vars.stateIsOnOffset = (int)0;
     vars.checkTimerOffset = (int)0;
     vars.remainedSecondsOffset = (int)0;
+    vars.totalSecondsOffset = (int)0;
 
     vars.lever1State = false;
     vars.lever2State = false;
@@ -81,6 +82,7 @@ init
     vars.oldCleared = false;
     vars.scanned = false;
     vars.bombRemaining = (int)600;
+    vars.bombTotal = (int)600;
 
     // Memory read helpers
     vars.RL = (Func<long, long>)((addr) => {
@@ -201,6 +203,7 @@ update
                     vars.heroAddr = aa;
                     var props = vars.WalkFF(fnPool, ca);
                     if (props.ContainsKey("RemainedSeconds")) vars.remainedSecondsOffset = props["RemainedSeconds"];
+                    if (props.ContainsKey("TotalSeconds")) vars.totalSecondsOffset = props["TotalSeconds"];
                     fHero = (vars.remainedSecondsOffset != 0);
                 }
             }
@@ -230,6 +233,7 @@ update
         vars.stateIsOnOffset = (int)0;
         vars.checkTimerOffset = (int)0;
         vars.remainedSecondsOffset = (int)0;
+        vars.totalSecondsOffset = (int)0;
         vars.lever1State = false;
         vars.lever2State = false;
         vars.bothPulled = false;
@@ -239,6 +243,7 @@ update
         vars.cleared = false;
         vars.oldCleared = false;
         vars.bombRemaining = (int)600;
+        vars.bombTotal = (int)600;
     }
 
     // === Read states ===
@@ -269,6 +274,8 @@ update
             if (vars.heroAddr != 0 && vars.remainedSecondsOffset != 0)
             {
                 vars.bombRemaining = vars.RI(vars.heroAddr + vars.remainedSecondsOffset);
+                if (vars.totalSecondsOffset != 0)
+                    vars.bombTotal = vars.RI(vars.heroAddr + vars.totalSecondsOffset);
             }
         }
         catch { }
@@ -282,7 +289,7 @@ update
         {
             int rem = (int)vars.bombRemaining;
             if (rem < 0) rem = 0;
-            int elapsed = 600 - rem;
+            int elapsed = (int)vars.bombTotal - rem;
             if (elapsed < 0) elapsed = 0;
 
             if (settings["show_bomb_remain"] && cv.ContainsKey("BombRemain"))
@@ -292,7 +299,11 @@ update
         }
         else if (timer.CurrentPhase == TimerPhase.NotRunning)
         {
-            if (cv.ContainsKey("BombRemain")) cv["BombRemain"].Value = "10:00";
+            if (cv.ContainsKey("BombRemain"))
+            {
+                int t = (int)vars.bombTotal;
+                cv["BombRemain"].Value = (t / 60).ToString() + ":" + (t % 60).ToString("D2");
+            }
             if (cv.ContainsKey("BombElapsed")) cv["BombElapsed"].Value = "0:00";
         }
     }
