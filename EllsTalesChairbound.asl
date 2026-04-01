@@ -24,7 +24,7 @@ state("EllsTalesChairbound-Win64-Shipping")
 startup
 {
     settings.Add("split_lever", true, "Split on clear (both levers pulled)");
-    settings.Add("pause_on_esc", true, "Pause timer on ESC menu");
+    settings.Add("pause_on_esc", false, "Pause timer on ESC menu");
     settings.Add("bomb_as_gametime", false, "Game Time = bomb elapsed (leaderboard timing)");
     settings.Add("show_bomb_remain", true, "Show bomb remaining time (Custom Variable: BombRemain)");
     settings.Add("show_bomb_elapsed", true, "Show bomb elapsed time (Custom Variable: BombElapsed)");

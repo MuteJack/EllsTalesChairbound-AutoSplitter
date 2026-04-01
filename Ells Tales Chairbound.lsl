@@ -49,7 +49,7 @@
         <Split>True</Split>
         <CustomSettings>
           <Setting id="split_lever" type="bool">True</Setting>
-          <Setting id="pause_on_esc" type="bool">True</Setting>
+          <Setting id="pause_on_esc" type="bool">False</Setting>
           <Setting id="bomb_as_gametime" type="bool">False</Setting>
           <Setting id="show_bomb_remain" type="bool">True</Setting>
           <Setting id="show_bomb_elapsed" type="bool">True</Setting>
