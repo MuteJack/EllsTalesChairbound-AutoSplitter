@@ -53,6 +53,7 @@
           <Setting id="bomb_as_gametime" type="bool">False</Setting>
           <Setting id="show_bomb_remain" type="bool">True</Setting>
           <Setting id="show_bomb_elapsed" type="bool">True</Setting>
+          <Setting id="debug_log" type="bool">True</Setting>
         </CustomSettings>
       </Settings>
     </Component>
