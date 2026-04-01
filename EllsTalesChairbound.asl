@@ -28,7 +28,7 @@ startup
     settings.Add("bomb_as_gametime", false, "Game Time = bomb elapsed (leaderboard timing)");
     settings.Add("show_bomb_remain", true, "Show bomb remaining time (Custom Variable: BombRemain)");
     settings.Add("show_bomb_elapsed", true, "Show bomb elapsed time (Custom Variable: BombElapsed)");
-    settings.Add("debug_log", true, "Enable debug log (chairbound_log_{yyyyMMdd_HHmmss}.txt in game folder)");
+    settings.Add("debug_log", false, "Enable debug log (chairbound_log_{yyyyMMdd_HHmmss}.txt in game folder)");
 }
 
 init
