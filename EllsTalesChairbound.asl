@@ -28,6 +28,7 @@ startup
     settings.Add("bomb_as_gametime", false, "Game Time = bomb elapsed (leaderboard timing)");
     settings.Add("show_bomb_remain", true, "Show bomb remaining time (Custom Variable: BombRemain)");
     settings.Add("show_bomb_elapsed", true, "Show bomb elapsed time (Custom Variable: BombElapsed)");
+    settings.Add("debug_log", true, "Enable debug log (chairbound_log_{yyyyMMdd_HHmmss}.txt in game folder)");
 }
 
 init
@@ -37,8 +38,28 @@ init
     if (current.mapNameId != 0 && current.mapNameId != vars.MAP_GAME)
         vars.MAP_MENU = current.mapNameId;
 
-    vars.logPath = @"d:\SteamLibrary\steamapps\common\Ells Tales Chairbound\chairbound_asl_log.txt";
+    vars.logPath = "";
     vars.debugTimer = 0;
+
+    // Log helper: creates log dir on first use
+    vars.Log = (Action<string>)((msg) => {
+        try
+        {
+            if (String.IsNullOrEmpty(vars.logPath))
+            {
+                string lsDir = Environment.CurrentDirectory;
+                string logDir = System.IO.Path.Combine(lsDir, "logs");
+                if (!System.IO.Directory.Exists(logDir))
+                    System.IO.Directory.CreateDirectory(logDir);
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                vars.logPath = System.IO.Path.Combine(logDir, "Ells Tales Chairbound_asl_log_" + timestamp + ".txt");
+            }
+            var sw = new System.IO.StreamWriter(vars.logPath, true);
+            sw.WriteLine("[" + DateTime.Now + "] " + msg);
+            sw.Close();
+        }
+        catch { }
+    });
     vars.inGame = (current.mapNameId == vars.MAP_GAME);
     vars.fnamePoolRVA = 0x04855940;
 
@@ -107,9 +128,7 @@ init
         return result;
     });
 
-    var sw = new System.IO.StreamWriter(vars.logPath, false);
-    sw.WriteLine("[" + DateTime.Now + "] ASL Attached map=" + current.mapNameId);
-    sw.Close();
+    if (settings["debug_log"]) vars.Log("ASL Attached map=" + current.mapNameId);
 }
 
 update
@@ -188,18 +207,14 @@ update
 
             vars.scanned = fMech && fHero;
 
-            var sw2 = new System.IO.StreamWriter(vars.logPath, true);
-            sw2.WriteLine("[" + DateTime.Now + "] SCAN: mech=" + fMech + " hero=" + fHero
+            if (settings["debug_log"]) vars.Log("SCAN: mech=" + fMech + " hero=" + fHero
                 + " stateIsOn=0x" + ((int)vars.stateIsOnOffset).ToString("X")
                 + " checkTimer=0x" + ((int)vars.checkTimerOffset).ToString("X")
                 + " remained=0x" + ((int)vars.remainedSecondsOffset).ToString("X"));
-            sw2.Close();
         }
         catch (Exception ex)
         {
-            var sw2 = new System.IO.StreamWriter(vars.logPath, true);
-            sw2.WriteLine("[" + DateTime.Now + "] SCAN ERR: " + ex.Message);
-            sw2.Close();
+            if (settings["debug_log"]) vars.Log("SCAN ERR: " + ex.Message);
         }
         skipScan:;
     }
@@ -290,15 +305,13 @@ update
     bool pc = (old.isPaused != current.isPaused);
     bool sl = (vars.debugTimer % 300 == 0);
 
-    if (sl || mc || lc || cc || pc)
+    if (settings["debug_log"])
     {
-        var sw = new System.IO.StreamWriter(vars.logPath, true);
-        if (mc) sw.WriteLine("[" + DateTime.Now + "] MAP: " + old.mapNameId + " -> " + current.mapNameId);
-        if (lc) sw.WriteLine("[" + DateTime.Now + "] LEVER: L1=" + vars.lever1State + " L2=" + vars.lever2State);
-        if (cc) sw.WriteLine("[" + DateTime.Now + "] CLEAR!");
-        if (pc) sw.WriteLine("[" + DateTime.Now + "] PAUSE: " + old.isPaused + " -> " + current.isPaused);
-        if (sl && !mc && !lc && !cc && !pc) sw.WriteLine("[" + DateTime.Now + "] POLL map=" + current.mapNameId + " bomb=" + vars.bombRemaining + " scanned=" + vars.scanned);
-        sw.Close();
+        if (mc) vars.Log("MAP: " + old.mapNameId + " -> " + current.mapNameId);
+        if (lc) vars.Log("LEVER: L1=" + vars.lever1State + " L2=" + vars.lever2State);
+        if (cc) vars.Log("CLEAR!");
+        if (pc) vars.Log("PAUSE: " + old.isPaused + " -> " + current.isPaused);
+        if (sl && !mc && !lc && !cc && !pc) vars.Log("POLL map=" + current.mapNameId + " bomb=" + vars.bombRemaining + " scanned=" + vars.scanned);
     }
 }
 
