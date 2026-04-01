@@ -3,11 +3,16 @@
 //
 // SETUP:
 //   1. Add Scriptable Auto Splitter -> select this file
-//   2. Set Timer to Game Time
-//   3. (Optional) Add Text components, set to Custom Variable:
+//   2. Timer 1: set to Game Time (bomb elapsed time, PB comparison)
+//   3. Timer 2 (optional): set to Real Time (wall clock)
+//   4. (Optional) Add Text components, set to Custom Variable:
 //      - "BombRemain" for bomb remaining time
-//      - "BombElapsed" for bomb elapsed time
-//   4. Add 1 split segment (e.g. "Clear")
+//      - "BombElapsed" for bomb elapsed time (text)
+//   5. Add 1 split segment (e.g. "Clear")
+//
+// TIMING:
+//   Game Time = bomb elapsed time (reflects item effects, matches leaderboard)
+//   Real Time = wall clock time (cannot be paused by ASL)
 
 state("EllsTalesChairbound-Win64-Shipping")
 {
@@ -20,6 +25,7 @@ startup
 {
     settings.Add("split_lever", true, "Split on clear (both levers pulled)");
     settings.Add("pause_on_esc", true, "Pause timer on ESC menu");
+    settings.Add("bomb_as_gametime", false, "Game Time = bomb elapsed (leaderboard timing)");
     settings.Add("show_bomb_remain", true, "Show bomb remaining time (Custom Variable: BombRemain)");
     settings.Add("show_bomb_elapsed", true, "Show bomb elapsed time (Custom Variable: BombElapsed)");
 }
@@ -307,4 +313,27 @@ split
 
 reset { return current.mapNameId == vars.MAP_GAME && old.mapNameId != vars.MAP_GAME; }
 
-isLoading { return current.mapNameId == 0 || (settings["pause_on_esc"] && (bool)vars.inGame && current.isPaused == 1); }
+isLoading
+{
+    if (settings["bomb_as_gametime"])
+        return true; // gameTime block controls Game Time
+    else
+        return current.mapNameId == 0 || (settings["pause_on_esc"] && (bool)vars.inGame && current.isPaused == 1);
+}
+
+gameTime
+{
+    if (!settings["bomb_as_gametime"])
+        return null; // Let isLoading handle Game Time normally
+
+    // Game Time = bomb elapsed time (600 - RemainedSeconds)
+    if (vars.inGame && vars.scanned && vars.remainedSecondsOffset != 0)
+    {
+        int rem = (int)vars.bombRemaining;
+        if (rem < 0) rem = 0;
+        int elapsed = 600 - rem;
+        if (elapsed < 0) elapsed = 0;
+        return TimeSpan.FromSeconds(elapsed);
+    }
+    return TimeSpan.Zero;
+}
