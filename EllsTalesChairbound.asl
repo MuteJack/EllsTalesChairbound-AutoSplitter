@@ -1,5 +1,13 @@
 // LiveSplit Auto Splitter for Ell's Tales: Chairbound
 // Engine: Unreal Engine 4.27 | Steam App ID: 3281410
+//
+// SETUP:
+//   1. Add Scriptable Auto Splitter -> select this file
+//   2. Set Timer to Game Time
+//   3. (Optional) Add Text components, set to Custom Variable:
+//      - "BombRemain" for bomb remaining time
+//      - "BombElapsed" for bomb elapsed time
+//   4. Add 1 split segment (e.g. "Clear")
 
 state("EllsTalesChairbound-Win64-Shipping")
 {
@@ -12,30 +20,8 @@ startup
 {
     settings.Add("split_lever", true, "Split on clear (both levers pulled)");
     settings.Add("pause_on_esc", true, "Pause timer on ESC menu");
-
-    vars.bombElapsedText = null;
-    vars.bombRemainText = null;
-    int textIdx = 0;
-    foreach (dynamic component in timer.Layout.Components)
-    {
-        if (component.GetType().Name == "TextComponent")
-        {
-            if (textIdx == 0)
-            {
-                vars.bombElapsedText = component.Settings;
-                vars.bombElapsedText.Text1 = "Bomb Elapsed";
-                vars.bombElapsedText.Text2 = "0:00";
-            }
-            else if (textIdx == 1)
-            {
-                vars.bombRemainText = component.Settings;
-                vars.bombRemainText.Text1 = "Bomb Remain";
-                vars.bombRemainText.Text2 = "10:00";
-            }
-            textIdx++;
-            if (textIdx >= 2) break;
-        }
-    }
+    settings.Add("show_bomb_remain", true, "Show bomb remaining time (Custom Variable: BombRemain)");
+    settings.Add("show_bomb_elapsed", true, "Show bomb elapsed time (Custom Variable: BombElapsed)");
 }
 
 init
@@ -172,7 +158,6 @@ update
                     if (props.ContainsKey("RightMechanism")) vars.rightMechAddr = vars.RL(aa + props["RightMechanism"]);
                     if (props.ContainsKey("CheckTimer")) vars.checkTimerOffset = props["CheckTimer"];
 
-                    // Walk BP_ItemGrab_C for StateIsOn
                     if (vars.leftMechAddr != 0)
                     {
                         long ic = vars.RL(vars.leftMechAddr + 0x10);
@@ -268,24 +253,29 @@ update
         catch { }
     }
 
-    // === Bomb texts ===
-    if (vars.inGame && vars.scanned && vars.remainedSecondsOffset != 0)
+    // === Bomb Custom Variables ===
+    try
     {
-        int rem = (int)vars.bombRemaining;
-        if (rem < 0) rem = 0;
-        int elapsed = 600 - rem;
-        if (elapsed < 0) elapsed = 0;
+        var cv = timer.Run.Metadata.CustomVariables;
+        if (vars.inGame && vars.scanned && vars.remainedSecondsOffset != 0)
+        {
+            int rem = (int)vars.bombRemaining;
+            if (rem < 0) rem = 0;
+            int elapsed = 600 - rem;
+            if (elapsed < 0) elapsed = 0;
 
-        if (vars.bombRemainText != null)
-            vars.bombRemainText.Text2 = (rem / 60).ToString() + ":" + (rem % 60).ToString("D2");
-        if (vars.bombElapsedText != null)
-            vars.bombElapsedText.Text2 = (elapsed / 60).ToString() + ":" + (elapsed % 60).ToString("D2");
+            if (settings["show_bomb_remain"] && cv.ContainsKey("BombRemain"))
+                cv["BombRemain"].Value = (rem / 60).ToString() + ":" + (rem % 60).ToString("D2");
+            if (settings["show_bomb_elapsed"] && cv.ContainsKey("BombElapsed"))
+                cv["BombElapsed"].Value = (elapsed / 60).ToString() + ":" + (elapsed % 60).ToString("D2");
+        }
+        else if (timer.CurrentPhase == TimerPhase.NotRunning)
+        {
+            if (cv.ContainsKey("BombRemain")) cv["BombRemain"].Value = "10:00";
+            if (cv.ContainsKey("BombElapsed")) cv["BombElapsed"].Value = "0:00";
+        }
     }
-    else if (timer.CurrentPhase == TimerPhase.NotRunning)
-    {
-        if (vars.bombRemainText != null) vars.bombRemainText.Text2 = "10:00";
-        if (vars.bombElapsedText != null) vars.bombElapsedText.Text2 = "0:00";
-    }
+    catch { }
 
     // === Log ===
     bool mc = (old.mapNameId != current.mapNameId);
