@@ -14,11 +14,14 @@
 //   Game Time = bomb elapsed time (reflects item effects, matches leaderboard)
 //   Real Time = wall clock time (cannot be paused by ASL)
 
+// Per-build RVAs (update on every game patch):
+//   GWorld     -> see worldPtr base below
+//   FNamePool  -> vars.fnamePoolRVA in init
 state("EllsTalesChairbound-Win64-Shipping")
 {
-    int mapNameId : "EllsTalesChairbound-Win64-Shipping.exe", 0x049D9530, 0x18;
-    long worldPtr : "EllsTalesChairbound-Win64-Shipping.exe", 0x049D9530;
-    byte isPaused : "EllsTalesChairbound-Win64-Shipping.exe", 0x049D9530, 0x118, 0x2B8;
+    int mapNameId : "EllsTalesChairbound-Win64-Shipping.exe", 0x049E37B0, 0x18;
+    long worldPtr : "EllsTalesChairbound-Win64-Shipping.exe", 0x049E37B0;
+    byte isPaused : "EllsTalesChairbound-Win64-Shipping.exe", 0x049E37B0, 0x118, 0x2B8;
 }
 
 startup
@@ -33,8 +36,11 @@ startup
 
 init
 {
-    vars.MAP_GAME = 504;
-    vars.MAP_MENU = -1;
+    // MAP_GAME: gameplay-level FName id. Resolved at runtime from the level name
+    // string ("Game") so future game updates that re-shuffle FName ids don't break us.
+    vars.MAP_GAME_NAME = "Game";
+    vars.MAP_GAME = (int)0;
+    vars.MAP_MENU = (int)(-1);
     if (current.mapNameId != 0 && current.mapNameId != vars.MAP_GAME)
         vars.MAP_MENU = current.mapNameId;
 
@@ -60,8 +66,8 @@ init
         }
         catch { }
     });
-    vars.inGame = (current.mapNameId == vars.MAP_GAME);
-    vars.fnamePoolRVA = 0x04855940;
+    vars.inGame = (vars.MAP_GAME != 0 && current.mapNameId == vars.MAP_GAME);
+    vars.fnamePoolRVA = 0x0485FBC0;
 
     vars.mechanismAddr = (long)0;
     vars.leftMechAddr = (long)0;
@@ -137,10 +143,31 @@ update
 {
     vars.debugTimer++;
 
-    if (vars.MAP_MENU == -1 && current.mapNameId != 0 && current.mapNameId != vars.MAP_GAME)
+    // Resolve MAP_GAME id from name once per session (self-heals across game patches
+    // that re-shuffle FName ids — only the GWorld+FNamePool RVAs need updating).
+    if ((int)vars.MAP_GAME == 0 && current.mapNameId > 0)
+    {
+        try
+        {
+            long mb = (long)modules.First().BaseAddress;
+            string nm = vars.FN(mb + vars.fnamePoolRVA, current.mapNameId);
+            if (nm == (string)vars.MAP_GAME_NAME)
+            {
+                vars.MAP_GAME = current.mapNameId;
+                if (settings["debug_log"]) vars.Log("MAP_GAME resolved: '" + nm + "' = id " + current.mapNameId);
+            }
+            else if (settings["debug_log"] && vars.debugTimer % 60 == 0)
+            {
+                vars.Log("MAP probe: id=" + current.mapNameId + " name='" + (nm ?? "<null>") + "'");
+            }
+        }
+        catch { }
+    }
+
+    if ((int)vars.MAP_MENU == -1 && current.mapNameId != 0 && current.mapNameId != (int)vars.MAP_GAME)
         vars.MAP_MENU = current.mapNameId;
 
-    vars.inGame = (current.mapNameId == vars.MAP_GAME);
+    vars.inGame = ((int)vars.MAP_GAME != 0 && current.mapNameId == (int)vars.MAP_GAME);
 
     // === SCAN ===
     if (vars.inGame && !vars.scanned)
@@ -326,7 +353,7 @@ update
     }
 }
 
-start { return current.mapNameId == vars.MAP_GAME && old.mapNameId != vars.MAP_GAME; }
+start { return (int)vars.MAP_GAME != 0 && current.mapNameId == (int)vars.MAP_GAME && old.mapNameId != (int)vars.MAP_GAME; }
 
 split
 {
@@ -335,7 +362,7 @@ split
     return false;
 }
 
-reset { return current.mapNameId == vars.MAP_GAME && old.mapNameId != vars.MAP_GAME; }
+reset { return (int)vars.MAP_GAME != 0 && current.mapNameId == (int)vars.MAP_GAME && old.mapNameId != (int)vars.MAP_GAME; }
 
 isLoading
 {
